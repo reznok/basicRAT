@@ -40,6 +40,8 @@ survey              - Run a system survey.
 unzip <file>        - Unzip a file.
 upload <files>      - Upload files(s).
 wget <url>          - Download a file from the web.
+clients             - List connected clients
+client <id>         - Connect to client'''
 
 [127.0.0.1] basicRAT> run uname -a
 Linux sandbox3 4.8.13-1-ARCH #1 SMP PREEMPT Fri Dec 9 07:24:34 CET 2016 x86_64 GNU/Linux
@@ -51,6 +53,8 @@ Keep in mind that before building you will likely want to modify both the `HOST`
 On Linux you will need Python 2.x, [PyInstaller](http://www.pyinstaller.org/), and pycrypto. Then run something like `pyinstaller2 --onefile basicRAT_client.py` and it should generate a `dist/` folder that contains a stand-alone ELF executable.
 
 On Windows you will need Python 2.x, PyInstaller, pycrypto, pywin32, and pefile. Then run something like `C:\path\to\PyInstaller-3.2\PyInstaller-3.2\pyinstaller.py --onefile basicRAT_client.py` and it should generate a `dist/` folder that contains a stand-alone PE (portable executable).
+
+Use "clients" to list active clients and "client <id>" to switch to running commands on that client.
 
 ## Todo
 * Client binary generation tool (cross-platform)
@@ -73,6 +77,7 @@ On Windows you will need Python 2.x, PyInstaller, pycrypto, pywin32, and pefile.
 ## Authors
 * Austin Jackson [@vesche](https://github.com/vesche)
 * Skyler Curtis [@deadPix3l](https://github.com/deadPix3l)
+* Brandon Forbes [@reznok](https://github.com/reznok)
 
 ## Other open-source Python RATs for Reference
 * [ahhh/Reverse_DNS_Shell](https://github.com/ahhh/Reverse_DNS_Shell)
