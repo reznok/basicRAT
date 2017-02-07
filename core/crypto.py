@@ -49,4 +49,3 @@ def diffiehellman(sock, server=True, bits=2048):
 
     s = pow(b, a, p)
     return SHA256.new(long_to_bytes(s)).digest()
-
