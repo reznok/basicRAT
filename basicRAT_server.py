@@ -87,20 +87,22 @@ class Server(threading.Thread):
             return
     
     def get_clients(self):
-        return [c for c in self.clients]
+        return [c for c in self.clients if c['client'].alive]
     
     def remove_client(self, conn):
         conn_to_remove = next(i for i in self.clients if i['client'] == conn)
         self.clients.remove(conn_to_remove)
 
 
-class ClientConnection:
+class ClientConnection(threading.Thread):
     alive = True
-
+    
     def __init__(self, conn, addr):
+        super(ClientConnection, self).__init__()
         self.conn   = conn
         self.addr   = addr
         self.dh_key = crypto.diffiehellman(self.conn, server=True)
+        self.start()
     
     def send(self, prompt, cmd, action):
         if not self.alive:
