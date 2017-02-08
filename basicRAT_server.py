@@ -71,6 +71,12 @@ class Server(threading.Thread):
             client_id = self.client_count
             self.clients.append({'client_id': client_id, 'client': client})
             self.client_count += 1
+
+    def shutdown(self):
+        for c in self.get_clients():
+            c["client"].send("goodbye")
+        self.s.shutdown(socket.SHUT_RDWR)
+        self.s.close()
     
     def verify_client_id(self, client_id):
         try:
@@ -218,6 +224,7 @@ def main():
                                     'connections (y/N)? ')
             if quit_option[0].lower() == 'y':
                 # gracefull kill all clients here
+                server.shutdown()
                 sys.exit(0)
             else:
                 continue
