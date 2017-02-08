@@ -94,7 +94,7 @@ class Server(threading.Thread):
         self.clients.remove(conn_to_remove)
 
 
-class ClientConnection():
+class ClientConnection:
     alive = True
     
     def __init__(self, conn, addr):

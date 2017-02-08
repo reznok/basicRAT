@@ -44,8 +44,6 @@ survey              - Run a system survey.
 unzip <file>        - Unzip a file.
 upload <files>      - Upload files(s).
 wget <url>          - Download a file from the web.
-clients             - List connected clients
-client <id>         - Connect to client'''
 
 [?] basicRAT> clients
 ID - Client Address
@@ -63,8 +61,6 @@ Keep in mind that before building you will likely want to modify both the `HOST`
 On Linux you will need Python 2.x, [PyInstaller](http://www.pyinstaller.org/), and pycrypto. Then run something like `pyinstaller2 --onefile basicRAT_client.py` and it should generate a `dist/` folder that contains a stand-alone ELF executable.
 
 On Windows you will need Python 2.x, PyInstaller, pycrypto, pywin32, and pefile. Then run something like `C:\path\to\PyInstaller-3.2\PyInstaller-3.2\pyinstaller.py --onefile basicRAT_client.py` and it should generate a `dist/` folder that contains a stand-alone PE (portable executable).
-
-Use "clients" to list active clients and "client <id>" to switch to running commands on that client.
 
 ## Todo
 * Client binary generation tool (cross-platform)
