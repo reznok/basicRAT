@@ -107,7 +107,7 @@ class ClientConnection():
         self.IV     = 0
         self.conn.setblocking(0)
     
-    def send(self, prompt, cmd, action):
+    def send(self, prompt, cmd="", action=""):
         if not self.alive:
             print 'Error: Client not connected.'
             return
@@ -161,9 +161,7 @@ class ClientConnection():
                 print(recv_data.split("|", 1)[-1])
 
             prompt = raw_input('\n[BRShell]{}> '.format(cwd)).rstrip()
-            crypto.sendGCM(self.conn, self.GCM, self.IV, prompt)
-            self.conn.settimeout(1)
-            self.IV += 1
+            self.send(prompt)
 
             if prompt == "exit":
                 break
