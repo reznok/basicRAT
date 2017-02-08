@@ -157,8 +157,8 @@ class ClientConnection():
             cwd = recv_data.split("|")[0]
 
             # Get all other data
-            if recv_data.split("|")[1] not in "":
-                print(recv_data.split("|")[1])
+            if recv_data.split("|", 1)[-1] not in "":
+                print(recv_data.split("|", 1)[-1])
 
             prompt = raw_input('\n[BRShell]{}> '.format(cwd)).rstrip()
             crypto.sendGCM(self.conn, self.GCM, self.IV, prompt)
