@@ -34,6 +34,7 @@ client <id>         - Connect to a client.
 clients             - List connected clients.
 download <files>    - Download file(s).
 execute <command>   - Execute a command on the target.
+shell               - Opens an interactive shell on target (Beta)
 help                - Show this help menu.
 kill                - Kill the client connection.
 persistence         - Apply persistence mechanism.
