@@ -86,7 +86,6 @@ Use "clients" to list active clients and "client <id>" to switch to running comm
 ## Authors
 * Austin Jackson [@vesche](https://github.com/vesche)
 * Skyler Curtis [@deadPix3l](https://github.com/deadPix3l)
-* Brandon Forbes [@reznok](https://github.com/reznok)
 
 ## Thanks
 * [@bozhu](https://github.com/bozhu), AES-GCM Python implementation.
