@@ -75,7 +75,6 @@ class Server(threading.Thread):
     def shutdown(self):
         for c in self.get_clients():
             c["client"].send("goodbye")
-        self.s.shutdown(socket.SHUT_RDWR)
         self.s.close()
     
     def verify_client_id(self, client_id):
